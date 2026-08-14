@@ -12,9 +12,13 @@ try {
             a.title, 
             a.link, 
             a.published_at, 
-            s.name as source_name 
+            s.name as source_name,
+            GROUP_CONCAT(c.name, ', ') AS tags
         FROM articles a
         JOIN sources s ON a.source_id = s.id
+        JOIN article_category ac ON a.id = ac.article_id
+        JOIN categories c ON ac.category_id = c.id
+        GROUP BY a.id, a.title
         ORDER BY a.published_at DESC
     ";
     

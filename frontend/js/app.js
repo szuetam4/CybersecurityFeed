@@ -1,8 +1,13 @@
-const API_URL = 'http://localhost:8000/articles.php';
+let currentSort = 'desc';
+let currentCategory = '';
 
-async function loadArticles() {
+async function loadArticles(category = '', sort = 'desc') {
 	const feedContainer = document.getElementById('news-feed');
-	
+
+	const API_URL = new URL('http://localhost:8000/articles.php');
+	if (category) API_URL.searchParams.append('category', category);
+	API_URL.searchParams.append('sort', sort);
+
 	try {
 		const response = await fetch(API_URL);
 		
@@ -58,4 +63,58 @@ async function loadArticles() {
 	
 }
 
-document.addEventListener('DOMContentLoaded', loadArticles());
+async function loadCategories(){
+	const categoriesList = document.getElementById('category-filter');
+	const API_URL = new URL('http://localhost:8000/categories.php');
+
+	try{
+		const response = await fetch(API_URL);
+
+		if(!response.ok){
+			throw new Error('Bład połączenia z API (Status: ' + response.status + ')');
+		}
+
+		const result = await response.json();
+		const categories = result.data;
+
+		categories.forEach(category => {
+			const tag = document.createElement('option');
+			tag.textContent = `${category.name}`;
+			tag.value = `${category.name}`;
+
+			categoriesList.appendChild(tag);
+		});
+	} catch (error) {
+		console.error('Krytyczny błąd pobierania:', error);
+		categoriesList.innerHTML = 'Nie udało się połączyć z API, sprawdź czy serwer PHP działa w tle.';
+	}
+}
+
+function sortToggle(){
+	sortButton = document.getElementById('sort-toggle');
+
+	if(currentSort === 'desc'){
+		currentSort = 'asc';
+		sortButton.textContent = 'Najnowsze';
+	} else {
+		currentSort = 'desc';
+		sortButton.textContent = 'Najstarsze';
+	}
+
+	loadArticles(currentCategory, currentSort);
+}
+
+function handleCategoryChange(event){
+	currentCategory = event.target.value;
+
+	loadArticles(currentCategory, currentSort);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+	loadCategories();
+	loadArticles(currentCategory, currentSort);
+});
+
+document.getElementById('sort-toggle').addEventListener('click', sortToggle);
+
+document.getElementById('category-filter').addEventListener('change', handleCategoryChange);

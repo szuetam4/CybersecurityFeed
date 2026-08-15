@@ -34,18 +34,18 @@ async function loadArticles() {
 			});
 
 			card.innerHTML = `
-				<a href="${article.link}">
-					<div class="article-title">
-                                        	<h2 class="title">${article.title || 'Brak tytułu'}</h2>
+				<a href="${article.link}" class="article-card">
+					<div class="card-image-placeholder img-tech">
+						<span class="category-badge">${article.tags}</span>
                                 	</div>
-					<div class="article-tags">
-						<span class="tags">${article.tags}</span>
+					<div class="card-content">
+						<div class="source-name">${article.source_name}</div>
+						<h2 class="card-title">${article.source_name}</h2>
+						<div class="card-footer">
+							<time>${formattedDate}</time>
+							<span class="read-more">Czytaj dalej &rarr;</span>
+						</div>
 					</div>
-					<div class="article-info">
-        					<h4 class="source-name">${article.source_name || 'Nieznane źródło'}
-							<span class="date">(${formattedDate})</span>
-						</h4>
-    					</div>
 				</a>
 			`;
 

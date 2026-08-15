@@ -247,18 +247,3 @@
         #sort-toggle:active {
         transform: scale(0.96);
         }
-
-        /* Stylizacja poszczególnych elementów na liście */
-        #category-filter option {
-        background-color: var(--card-bg); /* Tło opcji na białe */
-        color: var(--text-main); /* Ciemny kolor tekstu */
-        padding: 10px; /* Niektóre przeglądarki to zignorują, ale warto dodać */
-        font-size: 1rem;
-        }
-
-        /* Stylizacja aktualnie WYBRANEJ opcji (działa w części przeglądarek) */
-        #category-filter option:checked {
-        background-color: var(--accent-color);
-        color: #ffffff;
-        font-weight: bold;
-        }

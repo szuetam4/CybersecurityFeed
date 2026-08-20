@@ -12,7 +12,8 @@ CREATE TABLE categories (
 CREATE TABLE articles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title VARCHAR(255) NOT NULL,
-    link TEXT NOT NULL,
+    link TEXT UNIQUE NOT NULL,
+    img_url TEXT,
     published_at DATETIME NOT NULL,
     source_id INTEGER NOT NULL,
     FOREIGN KEY (source_id) REFERENCES sources(id)

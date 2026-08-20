@@ -41,11 +41,12 @@ async function loadArticles(category = '', sort = 'desc') {
 			card.innerHTML = `
 				<a href="${article.link}" class="article-card">
 					<div class="card-image-placeholder img-tech">
+            <img class="card-image" src="${article.img_url}" alt="article image">
 						<span class="category-badge">${article.tags}</span>
-                                	</div>
+          </div>
 					<div class="card-content">
 						<div class="source-name">${article.source_name}</div>
-						<h2 class="card-title">${article.source_name}</h2>
+						<h2 class="card-title">${article.title}</h2>
 						<div class="card-footer">
 							<time>${formattedDate}</time>
 							<span class="read-more">Czytaj dalej &rarr;</span>

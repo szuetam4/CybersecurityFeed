@@ -15,6 +15,7 @@ try {
             a.id,
             a.title,
             a.link,
+            a.img_url,
             a.published_at,
             s.name as source_name,
             GROUP_CONCAT(c.name, ', ') AS tags

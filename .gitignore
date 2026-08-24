@@ -69,5 +69,6 @@ Testing/
 .cache/
 
 # Database files
-#.sqlite
-#.db
+*.sqlite
+*.db
+*.sqlite.bak2

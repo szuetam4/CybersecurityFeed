@@ -1,11 +1,11 @@
 :root {
-            --bg-color: #f4f7f6;
-            --card-bg: #ffffff;
-            --text-main: #2d3436;
-            --text-muted: #636e72;
-            --accent-color: #d63031;
-            --accent-hover: #ff7675;
-            --border-color: #dfe6e9;
+            --bg-color: #0f172a;/*f4f7f6*/
+            --card-bg: #1e293b;/*ffffff*/
+            --text-main: #f8fafc;/*2d3436*/
+            --text-muted: #94a3b8;/*636e72*/
+            --accent-color: #f43f5e;/*d63031*/
+            --accent-hover: #fb7185;/*ff7675*/
+            --border-color: #334155;/*dfe6e9*/
         }
 
         * {
@@ -85,7 +85,7 @@
             background: var(--card-bg);
             border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.03);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
             border: 1px solid var(--border-color);
             transition: all 0.3s ease;
             display: flex;
@@ -93,10 +93,17 @@
             text-decoration: none;
             color: inherit;
         }
+        .article-card > a {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          text-decoration: none;
+          color: inherit;
+        }
 
         .article-card:hover {
             transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.8);
             border-color: transparent;
         }
 
@@ -109,7 +116,9 @@
         .card-image {
           height: 100%;
           width: 100%;
-          margin: auto;
+          object-fit: cover;
+          object-position: center;
+          display: block;
         }
 
         img{
@@ -122,7 +131,7 @@
             position: absolute;
             top: 15px;
             left: 15px;
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(15, 23, 42, 0.75);
             color: var(--text-main);
             padding: 6px 14px;
             border-radius: 30px;
@@ -130,7 +139,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(255,255,255,0.15);
         }
 
         .card-content {

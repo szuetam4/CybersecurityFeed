@@ -1,0 +1,24 @@
+{
+  "websites": [
+    {
+      "name": "netguardia.com",
+      "url": "https://netguardia.com/category/privacy/"
+    },
+    {
+      "name": "netguardia.com",
+      "url": "https://netguardia.com/category/governance-risk/"
+    },
+    {
+      "name": "netguardia.com",
+      "url": "https://netguardia.com/category/learning-development/"
+    },
+    {
+      "name": "netguardia.com",
+      "url": "https://netguardia.com/category/security-operations/"
+    },
+    {
+      "name": "netguardia.com",
+      "url": "https://netguardia.com/category/cybersecurity-intelligence/"
+    }
+  ]
+}

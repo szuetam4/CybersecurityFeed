@@ -9,6 +9,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cctype>
+#include <regex>
 
 using json = nlohmann::json;
 
@@ -157,7 +158,22 @@ std::string fetchHTML(const std::string& url) {
     }
     return readBuffer;
 }
+bool isImageLinkValid(const std::string& link) {
+  if(link.empty()) return false;
 
+  std::vector<std::string> validExtension = {".png", ".jpeg", ".jpg", ".webp"};
+
+  std::string lowerLink = link;
+  std::transform(lowerLink.begin(), lowerLink.end(), lowerLink.begin(), ::tolower);
+
+  for (const auto& ext : validExtension){
+    if(lowerLink.length() >= ext.length() &&
+       lowerLink.compare(lowerLink.length() - ext.length(), ext.length(), ext) == 0){
+      return true;
+    }
+  }
+  return false;
+}
 std::string linkExtraction(const std::string& extractedContent, const std::string& patternStart, const std::string& patternEnd){
     size_t startPos = extractedContent.find(patternStart, 0);
     startPos += patternStart.length();
@@ -166,6 +182,37 @@ std::string linkExtraction(const std::string& extractedContent, const std::strin
     size_t contentLength = endPos - startPos;
     std::string extractedLink = extractedContent.substr(startPos, contentLength);
     return extractedLink;
+}
+
+std::string extractValidImageLink(const std::string& extractedContent){
+  std::string patternStart = "src=\"";
+  std::string patternEnd = "\"";
+
+  size_t searchPos = 0;
+
+  while(true){
+    size_t startPos = extractedContent.find(patternStart, searchPos);
+    if(startPos == std::string::npos) {
+      break;
+    }
+
+    startPos += patternStart.length();
+
+    size_t endPos = extractedContent.find(patternEnd, startPos);
+    if(endPos == std::string::npos){
+      break;
+    }
+
+    std::string possibleLink = extractedContent.substr(startPos, endPos - startPos);
+
+    if (isImageLinkValid(possibleLink)){
+      return possibleLink;
+    }
+
+    searchPos = endPos + patternEnd.length();
+  }
+
+  return "";
 }
 
 std::string getSuffix(const std::string& filepath, const std::string& sourceName, const std::string& suffix){
@@ -235,11 +282,13 @@ std::string fetchMoreHTML(const std::string& apiUrl, int pageNumber, const std::
 
 std::string getCategoryTag(const std::string& content, const std::string& patternStart, const std::string& patternEnd){
   std::string parsedTag = linkExtraction(content, patternStart, patternEnd);
-  if(parsedTag.empty() || parsedTag.length() > 20){
+  if(parsedTag.empty() || parsedTag.length() > 40){
     std::cerr << "[DEBUG] Wyciągnięty tag wygląda błędnie: " << parsedTag << std::endl;
     return "uncategorized";
   } else {
     std::transform(parsedTag.begin(), parsedTag.end(), parsedTag.begin(),[](unsigned char c){return std::tolower(c);});
+    parsedTag = std::regex_replace(parsedTag, std::regex(R"(\s+)"), "-");
+    parsedTag = std::regex_replace(parsedTag, std::regex(R"(-&amp;-)"), "-");
     return parsedTag;
   }
 }
@@ -288,14 +337,7 @@ std::vector<Article> parseNetGuardia(const std::string& htmlContent, bool isFirs
 	    std::string extractedContent = htmlContent.substr(startPos, contentLength);
       std::string imgLink = "";
 
-      if(isFirstFetch == true){
-        imgLink = linkExtraction(extractedContent, imgPatternStart, imgPatternEnd);
-        imgLink += ".webp";
-      } else {
-        imgLink = linkExtraction(extractedContent, imgSecondPatternStart, imgSecondPatternEnd);
-        imgLink += ".webp";
-      }
-
+      imgLink = extractValidImageLink(extractedContent);
       std::string link = linkExtraction(extractedContent, linkPatternStart, linkPatternEnd);
       std::string title = linkExtraction(extractedContent, titlePatternStart, titlePatternEnd);
 
@@ -443,7 +485,10 @@ std::vector<Article> getNetguardiaArticles(std::vector<Source>& netguardiaSource
 
         if(responseObj.contains("success") && responseObj["success"] == true){
           std::string extractedHtml = responseObj["data"]["content"];
-          extractedHtml = extractedHtml + "<title>" + linkExtraction(sourceLink.url, "category/","/") + " | netguardia.com</title>";
+          std::string category2nd = linkExtraction(mainHtml, "https://netguardia.com/category/","/");  
+          category2nd = std::regex_replace(category2nd, std::regex(R"(&amp;)"), "&");
+
+          extractedHtml = extractedHtml + "<title>" + category2nd + " | netguardia.com</title>";
 
           std::vector<Article> moreArticles = parseNetGuardia(extractedHtml, false);
           std::cout << "      -> Znaleziono nowych artykułów: " << moreArticles.size() << std::endl;

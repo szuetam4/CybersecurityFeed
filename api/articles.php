@@ -9,6 +9,8 @@ $sort = (isset($_GET['sort']) && strtolower($_GET['sort']) === 'asc') ? 'ASC' : 
 
 $category = $_GET['category'] ?? null;
 
+$search = (isset($_GET['q'])) ? trim($_GET['q']) : null;
+
 try {
     $query = "
         SELECT
@@ -24,10 +26,11 @@ try {
         LEFT JOIN article_category ac ON a.id = ac.article_id
         LEFT JOIN categories c ON ac.category_id = c.id
     ";
+    $conditions = [];
     $params = [];
 
     if ($category) {
-        $query .= " WHERE a.id IN (
+        $conditions[] = "a.id IN (
             SELECT ac_sub.article_id
             FROM article_category ac_sub
             JOIN categories c_sub ON ac_sub.category_id = c_sub.id
@@ -36,12 +39,21 @@ try {
         $params[':category'] = $category;
     }
 
-    $query .= " GROUP BY a.id, a.title ORDER BY a.published_at $sort";
+    if($search){
+      $conditions[] = "a.title LIKE :search";
+      $params[':search'] = '%' . $search . '%';
+    }
+
+    if(!empty($conditions)){
+      $query .= " WHERE " . implode(' AND ', $conditions);
+    }
+
+    $query .= " GROUP BY a.id, a.title, a.link, a.img_url, a.published_at, s.name ORDER BY a.published_at $sort";
 
     $stmt = $pdo->prepare($query);
     $stmt->execute($params);
 
-    $articles = $stmt->fetchAll();
+    $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     http_response_code(200);
     echo json_encode([
@@ -57,3 +69,4 @@ try {
         'message' => $e->getMessage()
     ]);
 }
+?>

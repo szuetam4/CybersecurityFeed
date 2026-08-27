@@ -20,7 +20,7 @@ The system is divided into three decoupled components:
 ## ✨ MVP Requirements & Features
 
 1.  **Automated Scraping:** The C++ worker autonomously fetches and parses data from at least 2 predefined cybersecurity sources.
-2.  **RESTful Endpoints:** The PHP backend exposes a `/api/news` endpoint returning aggregated articles.
+2.  **RESTful Endpoints:** The PHP backend exposes a `/api/articles` endpoint returning aggregated articles.
 3.  **Sorting Capabilities:** Users can sort the feed by publication date (newest first / oldest first).
 4.  **Responsive UI:** A clean, grid-based web interface built with vanilla JavaScript (Fetch API) and CSS.
 5.  **Data Normalization:** A fully normalized relational database schema (Articles, Categories, Sources) avoiding data duplication.

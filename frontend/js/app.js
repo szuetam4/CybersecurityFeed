@@ -1,11 +1,13 @@
 let currentSort = 'desc';
+let currentSearch = '';
 let currentCategory = '';
 
-async function loadArticles(category = '', sort = 'desc') {
+async function loadArticles(category = '', sort = 'desc', search = '') {
 	const feedContainer = document.getElementById('news-feed');
 
 	const API_URL = new URL('http://localhost:8000/articles.php');
 	if (category) API_URL.searchParams.append('category', category);
+  if (search) API_URL.searchParams.append('q', search);
 	API_URL.searchParams.append('sort', sort);
 
 	try {
@@ -114,6 +116,15 @@ function handleCategoryChange(event){
 document.addEventListener('DOMContentLoaded', () => {
 	loadCategories();
 	loadArticles(currentCategory, currentSort);
+});
+
+let timeout = null;
+document.getElementById('search-input').addEventListener('input', (e) => {
+  clearTimeout(timeout);
+  timeout = setTimeout(() => {
+    currentSearch = e.target.value.trim();
+    loadArticles(currentCategory, currentSort, currentSearch);
+  }, 400);
 });
 
 document.getElementById('sort-toggle').addEventListener('click', sortToggle);

@@ -192,7 +192,6 @@ img {
     gap: 8px;
 }
 
-/* --- PASEK NARZĘDZI (TOOLBAR) --- */
 .tool-bar {
     display: flex;
     justify-content: space-between;
@@ -200,14 +199,13 @@ img {
     background-color: var(--card-bg);
     padding: 15px 25px;
     border-radius: 12px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2); /* Lekko podkręcony cień dla dark mode */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     border: 1px solid var(--border-color);
     margin-bottom: 2rem;
     flex-wrap: wrap;
     gap: 15px;
 }
 
-/* Filtry po lewej */
 .filter-group {
     display: flex;
     align-items: center;
@@ -242,23 +240,21 @@ img {
 #category-filter:hover,
 #category-filter:focus {
     border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15); /* Cień pod kolor akcentu (#f43f5e) */
+    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15); 
 }
 
-/* Grupa po prawej (Szukajka + Sortowanie) */
 .action-group {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-/* Pole wyszukiwania - dostosowane do ciemnego motywu */
 .search-input {
     padding: 9px 14px;
-    background-color: var(--bg-color); /* Ciemne tło pola */
-    color: var(--text-main); /* Jasny tekst */
+    background-color: var(--bg-color); 
+    color: var(--text-main); 
     border: 1px solid var(--border-color);
-    border-radius: 8px; /* Zmienione na 8px, by pasowało do reszty */
+    border-radius: 8px; 
     font-size: 1rem;
     outline: none;
     width: 250px;
@@ -271,11 +267,10 @@ img {
 }
 
 .search-input:focus {
-    border-color: var(--accent-color); /* Zmiana na Twój kolor akcentu */
-    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15); /* Cień pasujący do motywu */
+    border-color: var(--accent-color); 
+    box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15); 
 }
 
-/* Przycisk sortowania */
 #sort-toggle {
     padding: 10px 20px;
     font-family: inherit;
@@ -301,11 +296,10 @@ img {
     transform: scale(0.96);
 }
 
-/* RWD - Responsywność na telefony */
 @media (max-width: 768px) {
     .tool-bar {
         flex-direction: column;
-        align-items: stretch; /* Rozciąga elementy na całą szerokość */
+        align-items: stretch; 
     }
     
     .filter-group {
@@ -321,6 +315,6 @@ img {
     .search-input, 
     #sort-toggle,
     #category-filter {
-        width: 100%; /* Na telefonie wszystko będzie miało pełną szerokość */
+        width: 100%; 
     }
 }

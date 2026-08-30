@@ -2,6 +2,9 @@
 
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
+header("Content-Security-Policy: default-src 'self'; img-src *; script-src 'self'; style-src 'self'");
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
 
 require_once 'db.php';
 
@@ -20,10 +23,11 @@ try{
     ]);
 
 } catch (\Throwable $e) {
+    error_log('[DB] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     echo json_encode([
-       'error' => 'Failed to fetch categories.',
-       'message' => $e->getMessage()
+      'status' => 'error',
+      'message' => 'Wystąpił błąd serwera. Spróbuj ponownie później.'
     ]);
 }
 ?>

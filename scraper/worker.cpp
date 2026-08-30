@@ -146,7 +146,7 @@ std::string fetchHTML(const std::string& url) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, "");
 
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
@@ -158,6 +158,23 @@ std::string fetchHTML(const std::string& url) {
     }
     return readBuffer;
 }
+
+std::string htmlEscape(const std::string& input){
+  std::string out;
+  out.reserve(input.size());
+  for(char c : input){
+    switch (c){
+      case '<': out += "&lt;"; break;
+      case '>': out += "&gt;"; break;
+      case '&': out += "&amp;"; break;
+      case '"': out += "&quot;"; break;
+      case '\'': out += "&#39;"; break;
+      default: out += c;
+    }
+  }
+  return out;
+}
+
 bool isImageLinkValid(const std::string& link) {
   if(link.empty()) return false;
 
@@ -176,12 +193,13 @@ bool isImageLinkValid(const std::string& link) {
 }
 std::string linkExtraction(const std::string& extractedContent, const std::string& patternStart, const std::string& patternEnd){
     size_t startPos = extractedContent.find(patternStart, 0);
+    if(startPos == std::string::npos) return "";
     startPos += patternStart.length();
+
     size_t endPos = extractedContent.find(patternEnd, startPos);
-     
-    size_t contentLength = endPos - startPos;
-    std::string extractedLink = extractedContent.substr(startPos, contentLength);
-    return extractedLink;
+    if(endPos == std::string::npos || endPos < startPos) return "";
+
+    return extractedContent.substr(startPos, endPos - startPos);
 }
 
 std::string extractValidImageLink(const std::string& extractedContent){
@@ -206,12 +224,11 @@ std::string extractValidImageLink(const std::string& extractedContent){
     std::string possibleLink = extractedContent.substr(startPos, endPos - startPos);
 
     if (isImageLinkValid(possibleLink)){
-      return possibleLink;
+      return htmlEscape(possibleLink);
     }
 
     searchPos = endPos + patternEnd.length();
   }
-
   return "";
 }
 
@@ -263,7 +280,7 @@ std::string fetchMoreHTML(const std::string& apiUrl, int pageNumber, const std::
     headers = curl_slist_append(headers, "Accept: */*");
     headers = curl_slist_append(headers, ("Origin: " + origin).c_str());
     headers = curl_slist_append(headers, ("Referer: " + referer).c_str());
-    headers = curl_slist_append(headers, "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+    headers = curl_slist_append(headers, "User-Agent:");
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
@@ -289,7 +306,8 @@ std::string getCategoryTag(const std::string& content, const std::string& patter
     std::transform(parsedTag.begin(), parsedTag.end(), parsedTag.begin(),[](unsigned char c){return std::tolower(c);});
     parsedTag = std::regex_replace(parsedTag, std::regex(R"(\s+)"), "-");
     parsedTag = std::regex_replace(parsedTag, std::regex(R"(-&amp;-)"), "-");
-    return parsedTag;
+
+    return htmlEscape(parsedTag);
   }
 }
 std::vector<Article> parseNetGuardia(const std::string& htmlContent, bool isFirstFetch) {
@@ -342,10 +360,10 @@ std::vector<Article> parseNetGuardia(const std::string& htmlContent, bool isFirs
       std::string title = linkExtraction(extractedContent, titlePatternStart, titlePatternEnd);
 
 	    Article article;
-	    article.img = imgLink;
-	    article.link = link;
-      article.title = title;
-      article.tag = tag;
+	    article.img = htmlEscape(imgLink);
+	    article.link = htmlEscape(link);
+      article.title = htmlEscape(title);
+      article.tag = htmlEscape(tag);
 
 	    articles.push_back(article);
 
@@ -470,7 +488,7 @@ std::vector<Article> getNetguardiaArticles(std::vector<Source>& netguardiaSource
     int currentPage = 2;
     bool hasMorePosts = true;
     ////////////////CAUTION!!!//////////////////////
-    int maxPagesToFetch = 5; //HARDLIMITER
+    int maxPagesToFetch = 25; //HARDLIMITER
     /*If set to 0, program will fetch all posible content*/
     ////////////////////////////////////////////////
     std::cout << "\n[INFO] [II]: Pobieranie kolejnych stron..." << std::endl;
@@ -487,6 +505,7 @@ std::vector<Article> getNetguardiaArticles(std::vector<Source>& netguardiaSource
           std::string extractedHtml = responseObj["data"]["content"];
           std::string category2nd = linkExtraction(mainHtml, "https://netguardia.com/category/","/");  
           category2nd = std::regex_replace(category2nd, std::regex(R"(&amp;)"), "&");
+          category2nd = htmlEscape(category2nd);
 
           extractedHtml = extractedHtml + "<title>" + category2nd + " | netguardia.com</title>";
 
@@ -538,12 +557,12 @@ int main() {
     std::cout << "\nZAKOŃCZONO POBIERANIE. Łącznie zebrano: " << allArticles.size() << " artykółów!" << std::endl;
     std::cout << "=====================================================\n";
     //////////////////////FOR DEBUG////////////////////////////////////////
-    for(size_t i = 0; i < allArticles.size(); i++){
+    /*for(size_t i = 0; i < allArticles.size(); i++){
       std::cout << "-- Tytuł: " << allArticles[i].title << std::endl;
       std::cout << "-- Link: " << allArticles[i].link << std::endl;
       std::cout << "-- Foto: " << allArticles[i].img << std::endl;
       std::cout << "------------------------------------------" << std::endl;
-    }
+    }*/
     
 
     std::cout << "\n[INFO] Rozpoczynam zapis do bazy danych..." << std::endl;

@@ -7,14 +7,11 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (\Throwable $e) { 
-    header('Content-Type: application/json');
+    error_log('[DB] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     echo json_encode([
-        'error' => 'Database connection failed.',
-        'message' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
+      'status' => 'error',
+      'message' => 'Wystąpił błąd serwera. Spróbuj ponownie później.'
     ]);
-    exit();
 }
 ?>

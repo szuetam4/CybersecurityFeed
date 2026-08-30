@@ -26,38 +26,59 @@ async function loadArticles(category = '', sort = 'desc', search = '') {
 			feedContainer.innerHTML = 'Brak artykułów w bazie.';
 			return;
 		}
+    
+    function isSafeUrl(url) {
+      try {
+        const u = new URL(url, window.location.origin);
+        return ['http:', 'https:'].includes(u.protocol);
+      } catch { return false; }
+    }
 
+    articles.forEach(article => {
+      const card = document.createElement('article');
+      card.className = 'article-card';
 
-		articles.forEach(article => {
-			const card = document.createElement('article');
-			card.className = 'article-card';
+      const a = document.createElement('a');
+    // Walidacja protokołu — blokujemy javascript:, data: itd.
+      a.href = isSafeUrl(article.link) ? article.link : '#';
 
-			const dateObj = new Date(article.published_at);
-			const formattedDate = dateObj.toLocaleDateString('pl-PL', {
-				day: 'numeric',
-				month: 'long',
-				hour: '2-digit',
-				minute: '2-digit'
-			});
+      const imgWrapper = document.createElement('div');
+      imgWrapper.className = 'card-image-placeholder img-tech';
 
-			card.innerHTML = `
-				<a href="${article.link}">
-					<div class="card-image-placeholder img-tech">
-            <img class="card-image" src="${article.img_url}" alt="article image">
-						<span class="category-badge">${article.tags}</span>
-          </div>
-					<div class="card-content">
-						<div class="source-name">${article.source_name}</div>
-						<h2 class="card-title">${article.title}</h2>
-						<div class="card-footer">
-							<time>${formattedDate}</time>
-							<span class="read-more">Czytaj dalej &rarr;</span>
-						</div>
-					</div>
-				</a>
-			`;
+      const img = document.createElement('img');
+      img.className = 'card-image';
+      img.src = isSafeUrl(article.img_url) ? article.img_url : '';
+      img.alt = 'article image';
 
-			feedContainer.appendChild(card);
+      const badge = document.createElement('span');
+      badge.className = 'category-badge';
+      badge.textContent = article.tags; // textContent = brak interpretacji HTML
+
+      const content = document.createElement('div');
+      content.className = 'card-content';
+
+      const source = document.createElement('div');
+      source.className = 'source-name';
+      source.textContent = article.source_name;
+
+      const title = document.createElement('h2');
+      title.className = 'card-title';
+      title.textContent = article.title; // bezpieczne
+
+      const footer = document.createElement('div');
+      footer.className = 'card-footer';
+      const time = document.createElement('time');
+      time.textContent = formattedDate;
+      const more = document.createElement('span');
+      more.className = 'read-more';
+      more.textContent = 'Czytaj dalej →';
+      footer.append(time, more);
+
+      content.append(source, title, footer);
+      imgWrapper.append(img, badge);
+      a.append(imgWrapper, content);
+      card.append(a);
+      feedContainer.appendChild(card);
 		});
 	} catch (error) {
 		console.error('Krytyczny bład pobierania:', error);

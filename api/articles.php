@@ -2,14 +2,17 @@
 
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json; charset=UTF-8');
+header("Content-Security-Policy: default-src 'self'; img-src *; script-src 'self'; style-src 'self'");
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
 
 require_once 'db.php';
 
 $sort = (isset($_GET['sort']) && strtolower($_GET['sort']) === 'asc') ? 'ASC' : 'DESC';
 
-$category = $_GET['category'] ?? null;
+$category = isset($_GET['category']) && is_string($_GET['category']) ? substr(trim($_GET['category']), 0, 50) : null;
 
-$search = (isset($_GET['q'])) ? trim($_GET['q']) : null;
+$search = isset($_GET['q']) && is_string($_GET['q']) ? substr(trim($_GET['q']), 0, 100) : null;
 
 try {
     $query = "
@@ -63,10 +66,11 @@ try {
     ]);
 
 } catch (\Throwable $e) {
+    error_log('[DB] ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     echo json_encode([
-        'error' => 'Failed to fetch articles.',
-        'message' => $e->getMessage()
+      'status' => 'error',
+      'message' => 'Wystąpił błąd serwera. Spróbuj ponownie później.'
     ]);
 }
 ?>

@@ -1,6 +1,6 @@
 <?php
 
-$dbPath = __DIR__ . '/../database/cybersecurityfeed.sqlite';
+$dbPath = getenv('DB_PATH') ?: __DIR__ . '/../database/cybersecurityfeed.sqlite';
 
 try {
     $pdo = new PDO('sqlite:' . $dbPath);
@@ -13,5 +13,6 @@ try {
       'status' => 'error',
       'message' => 'Wystąpił błąd serwera. Spróbuj ponownie później.'
     ]);
+    exit;
 }
 ?>

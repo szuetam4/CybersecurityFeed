@@ -27,5 +27,11 @@ The system is divided into three decoupled components:
 
 ## 🚀 Getting Started
 
-*(This section will be updated with setup instructions once the core modules are implemented).*
+### 🐳 via Docker (recomended)
 
+git clone https://github.com/szuetam4/cybersecurityfeed.git
+cd cybersecurityfeed
+cp .env.example .env
+docker compose up -d --build --profile cron
+
+Now app is available on: http://localhost:8080

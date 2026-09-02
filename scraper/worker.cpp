@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <cctype>
 #include <regex>
+#include <cstdlib>
+#include <pugixml.hpp>
+#include <ctime>
 
 using json = nlohmann::json;
 
@@ -38,17 +41,36 @@ struct Article {
     std::string link;
     std::string title;
     std::string tag;
+    std::string publishedAt;
+    int sourceId;
 };
 
 struct Source {
   std::string name;
   std::string url;
+  std::string type = "html_scraper";
+  int sourceId = 0;
 };
 
+std::string getEnvOrDefault(const char* name, const std::string& defaultValue){
+  const char* val = std::getenv(name);
+  return val ? std::string(val) : defaultValue;
+}
+int getEnvOrDefault(const char* name, const int defaultValue){
+  const char* val = std::getenv(name);
+  if(!val) return defaultValue;
+
+  try{
+    return std::stoi(val);
+  } catch (const std::exception&){
+    std::cerr << "[WARNING] Nieprawidłowa wartość dla " << name << " (\"" << val << "\"), używa domyślnej: " << defaultValue << std::endl;
+    return defaultValue;
+  }
+}
 void loadSourcesToDB(sqlite3* db, const std::vector<Source>& initialSources){
   if(!db) return;
 
-  const char* sql = "INSERT OR IGNORE INTO sources (name, url) VALUES (?, ?);";
+  const char* sql = "INSERT OR IGNORE INTO sources (name, url, type) VALUES (?, ?, ?);";
   sqlite3_stmt* stmt;
 
   if(sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
@@ -62,6 +84,7 @@ void loadSourcesToDB(sqlite3* db, const std::vector<Source>& initialSources){
   for(const auto& src : initialSources) {
     sqlite3_bind_text(stmt, 1, src.name.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, src.url.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, src.type.c_str(), -1, SQLITE_TRANSIENT);
 
     if(sqlite3_step(stmt) == SQLITE_DONE){
       if(sqlite3_changes(db) > 0){
@@ -71,7 +94,6 @@ void loadSourcesToDB(sqlite3* db, const std::vector<Source>& initialSources){
       sqlite3_clear_bindings(stmt);
     }
   }
-
     sqlite3_exec(db, "COMMIT;", nullptr, nullptr, nullptr);
     sqlite3_finalize(stmt);
 
@@ -82,28 +104,29 @@ std::vector<Source> loadSourcesFromDB(sqlite3* db) {
   std::vector<Source> sources;
   if(!db) return sources;
 
-  const char* sql = "SELECT id, name, url FROM sources;";
+  const char* sql = "SELECT id, name, url, type FROM sources;";
   sqlite3_stmt* stmt;
 
   if(sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK){
-    std::cerr << "[ERROR] Bład wczytywania źródeł: " << sqlite3_errmsg(db) << std::endl;
+    std::cerr << "[ERROR] Błąd wczytywania źródeł: " << sqlite3_errmsg(db) << std::endl;
     return sources;
   }
 
   while (sqlite3_step(stmt) == SQLITE_ROW){
     Source src;
+    src.sourceId = sqlite3_column_int(stmt, 0);
     src.name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-    src.url = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+    src.url  = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+    const unsigned char* typeText = sqlite3_column_text(stmt, 3);
+    src.type = typeText ? reinterpret_cast<const char*>(typeText) : "html_scraper";
 
     sources.push_back(src);
   }
-
-  sqlite3_finalize(stmt);
-  std::cout<< "[INFO][DB] Pobrano " << sources.size() << " żródeł do scrapowania." << std::endl;
+sqlite3_finalize(stmt);
+  std::cout << "[INFO][DB] Pobrano " << sources.size() << " żródeł do scrapowania." << std::endl;
 
   return sources;
 }
-
 std::vector<Source> loadSourcesFromJson(const std::string& filepath){
   std::vector<Source> sources;
   std::ifstream file(filepath);
@@ -116,17 +139,17 @@ std::vector<Source> loadSourcesFromJson(const std::string& filepath){
     json json;
     file >> json;
     for(const auto& item : json["websites"]){
-      sources.push_back({
-          item["name"].get<std::string>(),
-          item["url"].get<std::string>()
-      });
+      Source src;
+      src.name = item["name"].get<std::string>();
+      src.url  = item["url"].get<std::string>();
+      src.type = item.value("type", "html_scraper"); // fallback gdyby wpis nie miał "type"
+      sources.push_back(src);
     }
   } catch (const json::exception& e){
     std::cerr << "[ERROR][JSON] Bład parsowania źródeł: " << e.what() << std::endl;
   }
   return sources;
 }
-
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp){
     size_t realSize = size * nmemb;
     std::string* mem = static_cast<std::string*>(userp);
@@ -134,7 +157,7 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp){
     return realSize;
 }
 
-std::string fetchHTML(const std::string& url) {
+std::string fetchHTML(const std::string& url, const std::string& userAgent) {
     CURL* curl;
     CURLcode res;
     std::string readBuffer;
@@ -146,7 +169,7 @@ std::string fetchHTML(const std::string& url) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
 
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "");
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, userAgent);
 
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
@@ -231,7 +254,7 @@ std::string extractValidImageLink(const std::string& extractedContent){
   }
   return "";
 }
-
+/*
 std::string getSuffix(const std::string& filepath, const std::string& sourceName, const std::string& suffix){
   std::ifstream file(filepath);
 
@@ -255,8 +278,9 @@ std::string getSuffix(const std::string& filepath, const std::string& sourceName
   }
   return "";
 }
-
-std::string fetchMoreHTML(const std::string& apiUrl, int pageNumber, const std::string& origin, const std::string& referer, const std::string& suffixSource, const std::string& suffixType) {
+*/
+std::string fetchMoreHTML(const std::string& apiUrl, int pageNumber, const std::string& origin, const std::string& referer,
+                          const std::string& userAgent, const std::string& payloadSuffix) {
   CURL* curl;
   CURLcode res;
   std::string readBuffer;
@@ -270,7 +294,6 @@ std::string fetchMoreHTML(const std::string& apiUrl, int pageNumber, const std::
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
     std::string payloadPrefix = "action=csco_ajax_load_more&page=";
-    std::string payloadSuffix = getSuffix("../scraper/resources/request_data.json", suffixSource, suffixType); 
     
     std::string postData = payloadPrefix + std::to_string(pageNumber) + payloadSuffix;
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
@@ -280,7 +303,7 @@ std::string fetchMoreHTML(const std::string& apiUrl, int pageNumber, const std::
     headers = curl_slist_append(headers, "Accept: */*");
     headers = curl_slist_append(headers, ("Origin: " + origin).c_str());
     headers = curl_slist_append(headers, ("Referer: " + referer).c_str());
-    headers = curl_slist_append(headers, "User-Agent:");
+    headers = curl_slist_append(headers, ("User-Agent: " + userAgent).c_str());
 
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
@@ -310,7 +333,7 @@ std::string getCategoryTag(const std::string& content, const std::string& patter
     return htmlEscape(parsedTag);
   }
 }
-std::vector<Article> parseNetGuardia(const std::string& htmlContent, bool isFirstFetch) {
+std::vector<Article> parseNetGuardia(const std::string& htmlContent, bool isFirstFetch, int sourceId) {
     std::vector<Article> articles;
 
     ////////////////////////////////////////////////////////////
@@ -364,6 +387,7 @@ std::vector<Article> parseNetGuardia(const std::string& htmlContent, bool isFirs
 	    article.link = htmlEscape(link);
       article.title = htmlEscape(title);
       article.tag = htmlEscape(tag);
+      article.sourceId = sourceId;
 
 	    articles.push_back(article);
 
@@ -372,7 +396,7 @@ std::vector<Article> parseNetGuardia(const std::string& htmlContent, bool isFirs
     return articles;
 }
 
-void saveArticlesToDatabse(sqlite3* db, const std::vector<Article>& articles, int sourceId){
+void saveArticlesToDatabse(sqlite3* db, const std::vector<Article>& articles){
   if(!db){
     std::cerr << "[ERROR][DB] Brak połączenia z bazą podczas zapisu!" << std::endl;
     return;
@@ -380,11 +404,13 @@ void saveArticlesToDatabse(sqlite3* db, const std::vector<Article>& articles, in
 
   sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, nullptr);
 
-  const char* sqlArticle = "INSERT OR IGNORE INTO articles (title, link, img_url, published_at, source_id) VALUES (?, ?, ?, datetime('now', 'localtime'), ?);";
+  const char* sqlArticle =
+    "INSERT OR IGNORE INTO articles (title, link, img_url, published_at, source_id) "
+    "VALUES (?, ?, ?, COALESCE(NULLIF(?, ''), datetime('now', 'localtime')), ?);";
   const char* sqlTagInsert = "INSERT OR IGNORE INTO categories (name) VALUES (?);";
   const char* sqlTagSelect = "SELECT id FROM categories WHERE name = ?;";
   const char* sqlBridge = "INSERT INTO article_category (article_id, category_id) VALUES (?, ?);";
-  
+
   sqlite3_stmt* stmtArticle = nullptr;
   sqlite3_stmt* stmtTagInsert = nullptr;
   sqlite3_stmt* stmtTagSelect = nullptr;
@@ -407,7 +433,7 @@ void saveArticlesToDatabse(sqlite3* db, const std::vector<Article>& articles, in
   int insertedCount = 0;
 
   for(const auto& article : articles){
-    std::string currentTag = article.tag.empty() ? "Uncategorized" : article.tag;
+    std::string currentTag = article.tag.empty() ? "uncategorized" : article.tag;
 
     sqlite3_bind_text(stmtTagInsert, 1, currentTag.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_step(stmtTagInsert);
@@ -427,11 +453,11 @@ void saveArticlesToDatabse(sqlite3* db, const std::vector<Article>& articles, in
       continue;
     }
 
-    sqlite3_bind_text(stmtArticle, 1, article.title.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmtArticle, 2, article.link.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmtArticle, 3, article.img.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmtArticle, 4, sourceId);
-
+sqlite3_bind_text(stmtArticle, 1, article.title.c_str(), -1, SQLITE_TRANSIENT);
+sqlite3_bind_text(stmtArticle, 2, article.link.c_str(), -1, SQLITE_TRANSIENT);
+sqlite3_bind_text(stmtArticle, 3, article.img.c_str(), -1, SQLITE_TRANSIENT);
+sqlite3_bind_text(stmtArticle, 4, article.publishedAt.c_str(), -1, SQLITE_TRANSIENT);
+sqlite3_bind_int(stmtArticle, 5, article.sourceId);
     if(sqlite3_step(stmtArticle) == SQLITE_DONE) {
       if(sqlite3_changes(db) > 0){
         insertedCount++;
@@ -470,16 +496,27 @@ void saveArticlesToDatabse(sqlite3* db, const std::vector<Article>& articles, in
   std::cout << "========================================\n" << std::endl;
 }
 
-std::vector<Article> getNetguardiaArticles(std::vector<Source>& netguardiaSources){
+std::vector<Article> getNetguardiaArticles(Source& netguardiaSource, const std::string& dataPath, const int maxPagesToFetch, const std::string& userAgent){
   std::vector<Article> allArticles;
-  
-  for(const auto& sourceLink : netguardiaSources){
-    std::cout << "\n[INFO] [I]: Pobieranie kodu HTML z " << sourceLink.url << "..." << std::endl;
+  std::ifstream file(dataPath);
 
-    std::string mainHtml = fetchHTML(sourceLink.url);
+  if(!file.is_open()){
+    std::cerr << "[ERROR][FILE] Nie można otworzyć: " << dataPath << std::endl;
+    return allArticles;
+  }
+  
+  json jsonSourceData;
+  file >> jsonSourceData;
+
+  try {
+    for(auto& [endpoint, suffix] : jsonSourceData["sources"][netguardiaSource.name].items()){
+
+    std::cout << "\n[INFO] [I]: Pobieranie kodu HTML z " << endpoint << "..." << std::endl;
+
+    std::string mainHtml = fetchHTML(endpoint, userAgent);
     std::cout << "[SUCCESS][CURL] Pobrano HTML'a o długości: " << mainHtml.length() << " znaków." << std::endl;
 
-    std::vector<Article> mainArticles = parseNetGuardia(mainHtml, true);
+    std::vector<Article> mainArticles = parseNetGuardia(mainHtml, true, netguardiaSource.sourceId);
     std::cout << "[SUCCESS] Znaleziono " << mainArticles.size() << " artykułów na netguardii" << std::endl;
 
     allArticles.insert(allArticles.end(), mainArticles.begin(), mainArticles.end());
@@ -487,16 +524,12 @@ std::vector<Article> getNetguardiaArticles(std::vector<Source>& netguardiaSource
     std::string ajaxUrl = "https://netguardia.com/wp-json/csco/v1/more-posts";
     int currentPage = 2;
     bool hasMorePosts = true;
-    ////////////////CAUTION!!!//////////////////////
-    int maxPagesToFetch = 25; //HARDLIMITER
-    /*If set to 0, program will fetch all posible content*/
-    ////////////////////////////////////////////////
     std::cout << "\n[INFO] [II]: Pobieranie kolejnych stron..." << std::endl;
 
     while (hasMorePosts && currentPage <= maxPagesToFetch){
       std::cout << "[INFO] Pobieranie strony " << currentPage << " z API zewnętrznego..." << std::endl;
 
-      std::string jsonResponse = fetchMoreHTML(ajaxUrl, currentPage, "https://netguardia.com", sourceLink.url, "netguardia", sourceLink.url);
+      std::string jsonResponse = fetchMoreHTML(ajaxUrl, currentPage, "https://netguardia.com", endpoint, userAgent, suffix);
 
       try{
         json responseObj = json::parse(jsonResponse);
@@ -509,7 +542,7 @@ std::vector<Article> getNetguardiaArticles(std::vector<Source>& netguardiaSource
 
           extractedHtml = extractedHtml + "<title>" + category2nd + " | netguardia.com</title>";
 
-          std::vector<Article> moreArticles = parseNetGuardia(extractedHtml, false);
+          std::vector<Article> moreArticles = parseNetGuardia(extractedHtml, false, netguardiaSource.sourceId);
           std::cout << "      -> Znaleziono nowych artykułów: " << moreArticles.size() << std::endl;
 
           allArticles.insert(allArticles.end(), moreArticles.begin(), moreArticles.end());
@@ -529,43 +562,149 @@ std::vector<Article> getNetguardiaArticles(std::vector<Source>& netguardiaSource
           break;
         }
     }
+    }
 
     std::cout << "=====================================================";
     std::cout << "\nZAKOŃCZONO POBIERANIE. Łącznie zebrano: " << allArticles.size() << " artykółów!" << std::endl;
     std::cout << "=====================================================\n";
-  } 
-  
+  } catch (const json::exception& e){
+    std::cerr << "[ERROR][JSON] Bład parsowania JSON: " << e.what() << std::endl;
+    return allArticles;
+  }  
   return allArticles;
 }
 
+class IArticleParser {
+public:
+    virtual std::vector<Article> parse(const std::string& rawContent, int sourceId) = 0;
+    virtual ~IArticleParser() = default;
+};
 
+// Twój dotychczasowy parseNetGuardia() opakowany w klasę
+class NetguardiaHtmlParser : public IArticleParser {
+public:
+    std::vector<Article> parse(const std::string& rawContent, int sourceId) override {
+        return parseNetGuardia(rawContent, true, sourceId); // istniejąca funkcja bez zmian
+    }
+};
+std::string parseRfc822ToSqlite(const std::string& rfc822Date) {
+    struct tm tmStruct{};
+    // strptime ignoruje strefę czasową na końcu - dla MVP to akceptowalne uproszczenie,
+    // ale zanotuj to jako dług techniczny jeśli źródła mają różne strefy
+    if (strptime(rfc822Date.c_str(), "%a, %d %b %Y %H:%M:%S", &tmStruct) == nullptr) {
+        std::cerr << "[WARNING] Nie udało się sparsować daty: " << rfc822Date << std::endl;
+        return "";
+    }
+    char buffer[20];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tmStruct);
+    return std::string(buffer);
+}
+
+class RssFeedParser : public IArticleParser {
+public:
+    std::vector<Article> parse(const std::string& rawContent, int sourceId) override {
+        std::vector<Article> articles;
+
+        pugi::xml_document doc;
+        // ważne: pugixml domyślnie NIE rozwiązuje zewnętrznych encji DTD,
+        // więc klasyczny atak XXE (odczyt plików / SSRF przez DTD) tutaj nie działa -
+        // ale i tak parsujemy z niezaufanego źródła, więc traktuj to ostrożnie
+        pugi::xml_parse_result result = doc.load_string(rawContent.c_str());
+
+        if (!result) {
+            std::cerr << "[ERROR][XML] Błąd parsowania RSS: " << result.description() << std::endl;
+            return articles;
+        }
+
+        pugi::xml_node channel = doc.child("rss").child("channel");
+        if (!channel) {
+            std::cerr << "[ERROR][RSS] Brak <channel> - to nie jest poprawny RSS 2.0?" << std::endl;
+            return articles;
+        }
+
+        for (pugi::xml_node item : channel.children("item")) {
+            Article article;
+            article.title = htmlEscape(item.child_value("title"));
+            article.link  = htmlEscape(item.child_value("link"));
+
+            std::string rawDate = item.child_value("pubDate");
+            article.publishedAt = rawDate.empty() ? "" : parseRfc822ToSqlite(rawDate);
+
+            // RSS nie zawsze ma dedykowany tag na obrazek - najczęściej <enclosure url="..." type="image/..."/>
+            pugi::xml_node enclosure = item.child("enclosure");
+            std::string imgUrl = enclosure.attribute("url").as_string();
+            article.img = isImageLinkValid(imgUrl) ? htmlEscape(imgUrl) : "";
+
+            // kategoria: pierwszy <category>, jeśli istnieje
+            pugi::xml_node categoryNode = item.child("category");
+            std::string tag = categoryNode ? categoryNode.child_value() : "uncategorized";
+            std::transform(tag.begin(), tag.end(), tag.begin(), ::tolower);
+            article.tag = htmlEscape(tag);
+
+            article.sourceId = sourceId;
+            articles.push_back(article);
+        }
+
+        std::cout << "[SUCCESS] Sparsowano " << articles.size() << " artykułów z RSS" << std::endl;
+        return articles;
+    }
+};
+std::unique_ptr<IArticleParser> parserFactory(const std::string& sourceType) {
+    if (sourceType == "rss") {
+        return std::make_unique<RssFeedParser>();
+    }
+    if (sourceType == "html_scraper") {
+        return std::make_unique<NetguardiaHtmlParser>();
+    }
+    std::cerr << "[ERROR] Nieznany typ źródła: " << sourceType << std::endl;
+    return nullptr;
+}
 int main() {
-    Database db("../database/cybersecurityfeed.sqlite");
-    if(!db.isConnected()) return 1;
+    std::string dbPath          = getEnvOrDefault("DB_PATH", "/app/database/cybersecurityfeed.sqlite");
+    std::string sourcesJsonPath = getEnvOrDefault("SOURCES_JSON_PATH", "/app/scraper/resources/sources-list.json");
+    std::string userAgent       = getEnvOrDefault("USER_AGENT", "");
 
-    std::vector<Article> allArticles;
+    if (userAgent.empty()) {
+        std::cerr << "[ERROR] USER_AGENT nie został ustawiony" << std::endl;
+        return -1;
+    }
 
-    std::vector<Source> seedData = loadSourcesFromJson("../scraper/resources/sources-list.json");
+    Database db(dbPath);
+    if (!db.isConnected()) return 1;
+
+    std::vector<Source> seedData = loadSourcesFromJson(sourcesJsonPath);
     loadSourcesToDB(db.get(), seedData);
 
     std::vector<Source> sources = loadSourcesFromDB(db.get());
+    std::vector<Article> allArticles;
 
-    std::vector<Article> netguardiaArticles = getNetguardiaArticles(sources);
-    allArticles.insert(allArticles.end(), netguardiaArticles.begin(), netguardiaArticles.end());
+    RssFeedParser rssParser;
+
+    for (auto& src : sources) {
+        if (src.type != "rss") {
+            std::cerr << "[WARNING] Pomijam źródło \"" << src.name
+                       << "\" - obsługiwany jest tylko typ 'rss', a to źródło ma typ '"
+                       << src.type << "'" << std::endl;
+            continue;
+        }
+
+        std::cout << "\n[INFO] Pobieranie RSS z " << src.url << "..." << std::endl;
+        std::string rawXml = fetchHTML(src.url, userAgent);
+
+        if (rawXml.empty()) {
+            std::cerr << "[ERROR] Pusta odpowiedź z " << src.url << ", pomijam." << std::endl;
+            continue;
+        }
+
+        std::vector<Article> articles = rssParser.parse(rawXml, src.sourceId);
+        allArticles.insert(allArticles.end(), articles.begin(), articles.end());
+    }
 
     std::cout << "=====================================================";
-    std::cout << "\nZAKOŃCZONO POBIERANIE. Łącznie zebrano: " << allArticles.size() << " artykółów!" << std::endl;
+    std::cout << "\nZAKOŃCZONO POBIERANIE. Łącznie zebrano: " << allArticles.size() << " artykułów!" << std::endl;
     std::cout << "=====================================================\n";
-    //////////////////////FOR DEBUG////////////////////////////////////////
-    /*for(size_t i = 0; i < allArticles.size(); i++){
-      std::cout << "-- Tytuł: " << allArticles[i].title << std::endl;
-      std::cout << "-- Link: " << allArticles[i].link << std::endl;
-      std::cout << "-- Foto: " << allArticles[i].img << std::endl;
-      std::cout << "------------------------------------------" << std::endl;
-    }*/
-    
 
     std::cout << "\n[INFO] Rozpoczynam zapis do bazy danych..." << std::endl;
-    saveArticlesToDatabse(db.get(), allArticles, 1);
+    saveArticlesToDatabse(db.get(), allArticles);
     return 0;
 }

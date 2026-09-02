@@ -1,15 +1,15 @@
-CREATE TABLE sources (
+CREATE TABLE IF NOT EXISTS sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(100) NOT NULL,
-    url VARCHAR(255) NOT NULL UNIQUE
+    url VARCHAR(255) NOT NULL UNIQUE,
+    type VARCHAR(20) NOT NULL DEFAULT 'html_scraper'
 );
-
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE articles (
+CREATE TABLE IF NOT EXISTS articles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title VARCHAR(255) NOT NULL,
     link TEXT UNIQUE NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE articles (
     FOREIGN KEY (source_id) REFERENCES sources(id)
 );
 
-CREATE TABLE article_category (
+CREATE TABLE IF NOT EXISTS article_category (
     article_id INTEGER NOT NULL,
     category_id INTEGER NOT NULL,
     PRIMARY KEY (article_id, category_id),

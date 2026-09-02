@@ -1,0 +1,29 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - db-data:/var/www/html/database
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    depends_on:
+      - web
+    volumes:
+      - db-data:/app/database
+    environment:
+      - DB_PATH=/app/database/cybersecurityfeed.sqlite
+      - SOURCES_JSON_PATH=/app/scraper/resources/sources-list.json
+      - REQUEST_DATA_PATH=/app/scraper/resources/request_data.json
+      - USER_AGENT=${USER_AGENT}
+      - MAX_PAGES_TO_FETCH=${MAX_PAGES_TO_FETCH}
+    restart: unless-stopped
+
+volumes:
+  db-data:

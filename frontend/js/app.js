@@ -5,7 +5,7 @@ let currentCategory = '';
 async function loadArticles(category = '', sort = 'desc', search = '') {
 	const feedContainer = document.getElementById('news-feed');
 
-	const API_URL = new URL('http://localhost:8000/articles.php');
+	const API_URL = new URL('/api/articles.php', window.location.origin);
 	if (category) API_URL.searchParams.append('category', category);
   if (search) API_URL.searchParams.append('q', search);
 	API_URL.searchParams.append('sort', sort);
@@ -35,6 +35,13 @@ async function loadArticles(category = '', sort = 'desc', search = '') {
     }
 
     articles.forEach(article => {
+      const dateObj = new Date(article.published_at);
+			const formattedDate = dateObj.toLocaleDateString('pl-PL', {
+				day: 'numeric',
+				month: 'long',
+				hour: '2-digit',
+				minute: '2-digit'
+			});
       const card = document.createElement('article');
       card.className = 'article-card';
 
@@ -68,7 +75,7 @@ async function loadArticles(category = '', sort = 'desc', search = '') {
       const footer = document.createElement('div');
       footer.className = 'card-footer';
       const time = document.createElement('time');
-      time.textContent = formattedDate;
+      time.textContent = article.formattedDate; //szponty
       const more = document.createElement('span');
       more.className = 'read-more';
       more.textContent = 'Czytaj dalej →';
@@ -89,7 +96,7 @@ async function loadArticles(category = '', sort = 'desc', search = '') {
 
 async function loadCategories(){
 	const categoriesList = document.getElementById('category-filter');
-	const API_URL = new URL('http://localhost:8000/categories.php');
+	const API_URL = new URL('/api/categories.php', window.location.origin);
 
 	try{
 		const response = await fetch(API_URL);
@@ -115,7 +122,7 @@ async function loadCategories(){
 }
 
 function sortToggle(){
-	sortButton = document.getElementById('sort-toggle');
+	let sortButton = document.getElementById('sort-toggle');
 
 	if(currentSort === 'desc'){
 		currentSort = 'asc';

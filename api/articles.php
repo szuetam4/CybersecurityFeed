@@ -72,5 +72,6 @@ try {
       'status' => 'error',
       'message' => 'Wystąpił błąd serwera. Spróbuj ponownie później.'
     ]);
+    exit;
 }
 ?>

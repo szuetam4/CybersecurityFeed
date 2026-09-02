@@ -1,0 +1,6 @@
+.git
+.gitignore
+README.md
+database/*.sqlite
+*.log
+node_modules

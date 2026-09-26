@@ -1,6 +1,7 @@
 {
   "websites": [
     { "name": "netguardia.com", "url": "https://netguardia.com/", "type": "html_scraper" },
-    { "name": "zaufanatrzeciastrona.pl", "url": "https://zaufanatrzeciastrona.pl/feed.xml", "type": "rss" }
+    { "name": "zaufanatrzeciastrona.pl", "url": "https://zaufanatrzeciastrona.pl/feed.xml", "type": "rss" },
+    { "name": "thehackernews.com", "url": "https://thehackernews.com/", "type": "thn_scraper" }
   ]
 }

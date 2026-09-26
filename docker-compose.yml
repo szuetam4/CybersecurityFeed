@@ -8,6 +8,10 @@ services:
     volumes:
       - db-data:/var/www/html/database
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    mem_limit: 256m
+    cpus: 0.5
 
   worker:
     build:
@@ -24,6 +28,10 @@ services:
       - USER_AGENT=${USER_AGENT}
       - MAX_PAGES_TO_FETCH=${MAX_PAGES_TO_FETCH}
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    mem_limit: 256m
+    cpus: 0.5
 
 volumes:
   db-data:

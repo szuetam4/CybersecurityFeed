@@ -128,6 +128,10 @@ img {
 
 .img-tech { background: linear-gradient(135deg, #0984e3, #74b9ff); }
 .img-news { background: linear-gradient(135deg, #00b894, #55efc4); }
+.img-violet  { background: linear-gradient(135deg, #6c5ce7, #a29bfe); }
+.img-amber   { background: linear-gradient(135deg, #e17055, #fab1a0); }
+.img-teal    { background: linear-gradient(135deg, #00cec9, #81ecec); }
+.img-crimson { background: linear-gradient(135deg, #d63031, #ff7675); }
 
 .category-badge {
     position: absolute;
@@ -296,7 +300,65 @@ img {
     transform: scale(0.96);
 }
 
+.header-subtitle {
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.feed-status-message {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+.feed-scroll-sentinel {
+    height: 1px;
+}
+
+.scroll-top-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--accent-color);
+    color: #ffffff;
+    font-size: 1.4rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    transition: background-color 0.2s ease, transform 0.1s ease, opacity 0.2s ease;
+}
+
+.scroll-top-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.scroll-top-btn:active {
+    transform: scale(0.92);
+}
+
+/* [hidden] samo w sobie ustawia display:none - ta reguła nadpisuje flex
+   tylko wtedy, gdy atrybut zostanie usunięty przez JS */
+.scroll-top-btn:not([hidden]) {
+    display: flex;
+}
+
 @media (max-width: 768px) {
+    .scroll-top-btn {
+        bottom: 20px;
+        right: 20px;
+        width: 44px;
+        height: 44px;
+    }
+
     .tool-bar {
         flex-direction: column;
         align-items: stretch; 

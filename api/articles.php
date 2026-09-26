@@ -14,21 +14,11 @@ $category = isset($_GET['category']) && is_string($_GET['category']) ? substr(tr
 
 $search = isset($_GET['q']) && is_string($_GET['q']) ? substr(trim($_GET['q']), 0, 100) : null;
 
+$limit = isset($_GET['limit']) ? min(max((int)$_GET['limit'], 1), 100) : 20;
+
+$offset = isset($_GET['offset']) ? max((int)$_GET['offset'], 0) : 0;
+
 try {
-    $query = "
-        SELECT
-            a.id,
-            a.title,
-            a.link,
-            a.img_url,
-            a.published_at,
-            s.name as source_name,
-            GROUP_CONCAT(c.name, ', ') AS tags
-        FROM articles a
-        JOIN sources s ON a.source_id = s.id
-        LEFT JOIN article_category ac ON a.id = ac.article_id
-        LEFT JOIN categories c ON ac.category_id = c.id
-    ";
     $conditions = [];
     $params = [];
 
@@ -43,18 +33,46 @@ try {
     }
 
     if($search){
-      $conditions[] = "a.title LIKE :search";
-      $params[':search'] = '%' . $search . '%';
+      $escapedSearch = str_replace(['%', '_'], ['\%', '\_'], $search);
+      $conditions[] = "a.title LIKE :search ESCAPE '\\'";
+      $params[':search'] = '%' . $escapedSearch . '%';
     }
 
-    if(!empty($conditions)){
-      $query .= " WHERE " . implode(' AND ', $conditions);
-    }
+    $whereClause = !empty($conditions) ? " WHERE " . implode(' AND ', $conditions) : '';
 
-    $query .= " GROUP BY a.id, a.title, a.link, a.img_url, a.published_at, s.name ORDER BY a.published_at $sort";
+    $countQuery = "SELECT COUNT(*) FROM articles a" . $whereClause;
+    $countStmt = $pdo->prepare($countQuery);
+    $countStmt->execute($params);
+    $total = (int)$countStmt->fetchColumn();
+   
+    $query = "
+        SELECT
+            a.id,
+            a.title,
+            a.link,
+            a.img_url,
+            a.published_at,
+            s.name as source_name,
+            GROUP_CONCAT(c.name, ', ') AS tags
+        FROM articles a
+        JOIN sources s ON a.source_id = s.id
+        LEFT JOIN article_category ac ON a.id = ac.article_id
+        LEFT JOIN categories c ON ac.category_id = c.id
+        $whereClause
+        GROUP BY a.id, a.title, a.link, a.img_url, a.published_at, s.name 
+        ORDER BY a.published_at $sort
+        LIMIT :limit OFFSET :offset
+        ";
 
     $stmt = $pdo->prepare($query);
-    $stmt->execute($params);
+
+    foreach ($params as $key => $val) {
+      $stmt->bindValue($key, $val);
+    }
+
+    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmt->execute();
 
     $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -62,6 +80,8 @@ try {
     echo json_encode([
         'status' => 'success',
         'count' => count($articles),
+        'total' => $total,
+        'has_more' => ($offset + count($articles)) < $total,
         'data' => $articles
     ]);
 

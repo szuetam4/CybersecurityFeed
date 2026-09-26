@@ -15,7 +15,7 @@ The system is divided into three decoupled components:
 *   **Data Ingestion Worker (C++):** A background process responsible for fetching and parsing external data (HTML) efficiently without blocking the web server.
 *   **REST API (PHP):** A lightweight backend that connects to the database and serves normalized data to the client via JSON endpoints.
 *   **Client Interface (JS/HTML/CSS):** A dynamic Single Page Application (SPA) that consumes the API and presents the feed to the user.
-*   **Database:** MySQL (Relational structure ensuring data normalization).
+*   **Database:** sqlite (Relational structure ensuring data normalization).
 
 ## ✨ MVP Requirements & Features
 
